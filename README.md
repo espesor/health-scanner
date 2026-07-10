@@ -6,6 +6,10 @@ level, additive flags, and snack-vs-meal context. See [DESIGN.md](DESIGN.md)
 for the full design; this repo currently implements **M1** (barcode → food
 score).
 
+**Live app:** https://espesor.github.io/health-scanner/ — open it on your
+phone and point the camera at a barcode. Deployed automatically from `main`
+by [.github/workflows/deploy.yml](.github/workflows/deploy.yml).
+
 ## Run it
 
 ```sh
