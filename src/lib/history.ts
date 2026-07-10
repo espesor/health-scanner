@@ -1,13 +1,16 @@
 import type { Band, MealContext } from "./types";
 
 export interface HistoryEntry {
+  /** absent in entries saved before M2 — those are food */
+  type?: "food" | "care";
   barcode: string;
   name: string;
   brand?: string;
   imageUrl?: string;
   score: number;
   band: Band;
-  context: MealContext;
+  /** food only */
+  context?: MealContext;
   scannedAt: number;
 }
 

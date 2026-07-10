@@ -84,11 +84,13 @@ const SWEETENER_PREFIXES = [
   "en:e959", "en:e960", "en:e961", "en:e962", "en:e969",
 ];
 
+// Half-step scores belong to the band below (a 6.5 is an "okay", not a "good"
+// — see the DESIGN.md 5.2 worked example).
 export function bandFor(score: number): Band {
-  if (score >= 8.5) return "excellent";
-  if (score >= 6.5) return "good";
-  if (score >= 4.5) return "okay";
-  if (score >= 2.5) return "poor";
+  if (score >= 9) return "excellent";
+  if (score >= 7) return "good";
+  if (score >= 5) return "okay";
+  if (score >= 3) return "poor";
   return "avoid";
 }
 

@@ -49,6 +49,56 @@ export interface BreakdownRow {
   source: string;
 }
 
+// ---- Personal care (DESIGN.md 5.2) ----
+
+export interface BeautyProduct {
+  barcode: string;
+  name: string;
+  brand?: string;
+  imageUrl?: string;
+  categoriesTags: string[];
+  ingredientsText?: string;
+  /** parsed ingredient tokens (from OBF's parse when present, else split from text) */
+  ingredients: string[];
+}
+
+/** How the product is used — determines which ingredient flags apply. */
+export type CareKind = "sunscreen" | "oral" | "rinse-off" | "leave-on";
+
+export type HazardTier = "A" | "B" | "C";
+
+export interface FlaggedIngredient {
+  /** the ingredient token as printed on the label */
+  ingredient: string;
+  entryId: string;
+  label: string;
+  tier: HazardTier;
+  reason: string;
+  source: string;
+  impact: number;
+}
+
+export interface CarePositive {
+  label: string;
+  detail: string;
+  source: string;
+}
+
+export interface CareScoreResult {
+  score: number;
+  band: Band;
+  kind: CareKind;
+  kindLabel: string;
+  flagged: FlaggedIngredient[];
+  positives: CarePositive[];
+  /** context notes always shown (e.g. the sunscreen disclaimer) */
+  notes: string[];
+  unknown: string[];
+  totalIngredients: number;
+  confidence: "full" | "partial";
+  rubricVersion: string;
+}
+
 export interface ScoreResult {
   /** 1-10 in 0.5 steps, 10 = healthiest */
   score: number;

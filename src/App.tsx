@@ -1,18 +1,34 @@
 import { useCallback, useState } from "react";
+import { CareScoreCard } from "./components/CareScoreCard";
 import { Scanner } from "./components/Scanner";
 import { ScoreCard } from "./components/ScoreCard";
 import { isValidEan } from "./lib/barcode";
+import { scoreCare } from "./lib/care-score";
 import { scoreFood } from "./lib/food-score";
 import { addToHistory, loadHistory, type HistoryEntry } from "./lib/history";
+import { fetchBeautyProduct } from "./lib/openbeautyfacts";
 import { fetchProduct, inferContext } from "./lib/openfoodfacts";
-import type { MealContext, Product, ScoreResult } from "./lib/types";
+import type {
+  BeautyProduct,
+  CareScoreResult,
+  MealContext,
+  Product,
+  ScoreResult,
+} from "./lib/types";
 
 type Screen =
   | { kind: "scan" }
   | { kind: "loading"; barcode: string }
   | { kind: "result"; product: Product; result: ScoreResult }
+  | { kind: "care-result"; product: BeautyProduct; result: CareScoreResult }
+  | { kind: "nodata"; product: BeautyProduct }
   | { kind: "notfound"; barcode: string }
   | { kind: "error"; message: string };
+
+function hasNutrition(p: Product): boolean {
+  const n = p.nutriments;
+  return [n.energyKj, n.sugars, n.saturatedFat, n.salt].some((v) => v !== undefined);
+}
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ kind: "scan" });
@@ -23,26 +39,66 @@ export default function App() {
     if (navigator.vibrate) navigator.vibrate(80);
     setScreen({ kind: "loading", barcode });
     try {
-      const product = await fetchProduct(barcode);
-      if (!product) {
-        setScreen({ kind: "notfound", barcode });
+      // A barcode could be either database; query both and route by best data.
+      const [offRes, obfRes] = await Promise.allSettled([
+        fetchProduct(barcode),
+        fetchBeautyProduct(barcode),
+      ]);
+      const food = offRes.status === "fulfilled" ? offRes.value : null;
+      const care = obfRes.status === "fulfilled" ? obfRes.value : null;
+      if (offRes.status === "rejected" && obfRes.status === "rejected") throw offRes.reason;
+
+      if (food && hasNutrition(food)) {
+        const context = inferContext(food);
+        const result = scoreFood(food, context);
+        setScreen({ kind: "result", product: food, result });
+        setHistory(
+          addToHistory({
+            type: "food",
+            barcode: food.barcode,
+            name: food.name,
+            brand: food.brand,
+            imageUrl: food.imageUrl,
+            score: result.score,
+            band: result.band,
+            context,
+            scannedAt: Date.now(),
+          })
+        );
         return;
       }
-      const context = inferContext(product);
-      const result = scoreFood(product, context);
-      setScreen({ kind: "result", product, result });
-      setHistory(
-        addToHistory({
-          barcode: product.barcode,
-          name: product.name,
-          brand: product.brand,
-          imageUrl: product.imageUrl,
-          score: result.score,
-          band: result.band,
-          context,
-          scannedAt: Date.now(),
-        })
-      );
+
+      if (care) {
+        if (!care.ingredients.length && !care.ingredientsText) {
+          setScreen({ kind: "nodata", product: care });
+          return;
+        }
+        const result = scoreCare(care);
+        setScreen({ kind: "care-result", product: care, result });
+        setHistory(
+          addToHistory({
+            type: "care",
+            barcode: care.barcode,
+            name: care.name,
+            brand: care.brand,
+            imageUrl: care.imageUrl,
+            score: result.score,
+            band: result.band,
+            scannedAt: Date.now(),
+          })
+        );
+        return;
+      }
+
+      if (food) {
+        // In Open Food Facts but without nutrition data — score what we can.
+        const context = inferContext(food);
+        const result = scoreFood(food, context);
+        setScreen({ kind: "result", product: food, result });
+        return;
+      }
+
+      setScreen({ kind: "notfound", barcode });
     } catch (e) {
       setScreen({
         kind: "error",
@@ -128,13 +184,35 @@ export default function App() {
         <div className="status">
           <h2>Product not found</h2>
           <p>
-            Barcode <strong>{screen.barcode}</strong> isn't in Open Food Facts yet.
-            Label-photo analysis is coming in M3.
+            Barcode <strong>{screen.barcode}</strong> isn't in Open Food Facts or
+            Open Beauty Facts yet. Label-photo analysis is coming in M3.
           </p>
           <button className="primary" onClick={() => setScreen({ kind: "scan" })}>
             Scan again
           </button>
         </div>
+      )}
+
+      {screen.kind === "nodata" && (
+        <div className="status">
+          <h2>No ingredient list available</h2>
+          <p>
+            <strong>{screen.product.name}</strong> is in Open Beauty Facts, but
+            without an ingredient list there's nothing to evaluate. Label-photo
+            analysis is coming in M3.
+          </p>
+          <button className="primary" onClick={() => setScreen({ kind: "scan" })}>
+            Scan again
+          </button>
+        </div>
+      )}
+
+      {screen.kind === "care-result" && (
+        <CareScoreCard
+          product={screen.product}
+          result={screen.result}
+          onRescan={() => setScreen({ kind: "scan" })}
+        />
       )}
 
       {screen.kind === "error" && (

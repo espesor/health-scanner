@@ -4,7 +4,7 @@ Scan a food product's barcode with your phone and get a 1–10 health score with
 an explanation, based on Nutri-Score-style nutrient profiling, NOVA processing
 level, additive flags, and snack-vs-meal context. See [DESIGN.md](DESIGN.md)
 for the full design; this repo currently implements **M1** (barcode → food
-score).
+score) and **M2** (personal-care products: sunscreen, toothpaste, lotion…).
 
 **Live app:** https://espesor.github.io/health-scanner/ — open it on your
 phone and point the camera at a barcode. Deployed automatically from `main`
@@ -29,14 +29,17 @@ camera API requires HTTPS. Or type a barcode manually to skip the camera.
 - **Barcode scanning** uses the native `BarcodeDetector` API when available
   (Android Chrome) and falls back to [zxing-wasm](https://github.com/Sec-ant/zxing-wasm)
   (iOS Safari, desktop). Detected codes are checksum-validated.
-- **Product lookup** hits the [Open Food Facts](https://world.openfoodfacts.org)
-  API v2 (ODbL-licensed data).
-- **Scoring** is a deterministic rubric in [src/lib/food-score.ts](src/lib/food-score.ts)
-  — no LLM in the math. See DESIGN.md §5.1.
+- **Product lookup** queries [Open Food Facts](https://world.openfoodfacts.org)
+  and [Open Beauty Facts](https://world.openbeautyfacts.org) (ODbL-licensed
+  data) in parallel and routes to the food or personal-care rubric.
+- **Scoring** is deterministic — no LLM in the math. Food:
+  [src/lib/food-score.ts](src/lib/food-score.ts) (DESIGN.md §5.1). Personal
+  care: [src/lib/care-score.ts](src/lib/care-score.ts) against the curated
+  hazard database in [src/lib/hazard-db.ts](src/lib/hazard-db.ts), compiled
+  from EU CosIng Annex II/III, FDA monographs, IARC, and Prop 65 (§5.2).
 - Scan history is stored locally (localStorage); nothing leaves the device
   except the barcode lookup.
 
 ## Roadmap
 
-M2 personal-care products · M3 label-photo OCR · M4 photo product ID — see
-DESIGN.md §9.
+M3 label-photo OCR · M4 photo product ID · M5 polish — see DESIGN.md §9.
