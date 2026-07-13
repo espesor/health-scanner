@@ -401,6 +401,57 @@ button.primary {
   opacity: 0.75;
 }
 
+/* ---- Manual ingredient entry (not-found fallback) ---- */
+.notfound-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.manual-care-card {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.manual-care-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.manual-care-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.manual-care-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--surface-2);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-family: inherit;
+}
+
+.manual-care-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--surface-2);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.5;
+}
+
 /* ---- History ---- */
 .history h3 {
   font-size: 0.95rem;

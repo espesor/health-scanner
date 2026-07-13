@@ -10,11 +10,19 @@ import { fetchBeautyProduct } from "./lib/openbeautyfacts";
 import { fetchProduct, inferContext } from "./lib/openfoodfacts";
 import type {
   BeautyProduct,
+  CareKind,
   CareScoreResult,
   MealContext,
   Product,
   ScoreResult,
 } from "./lib/types";
+
+const KIND_TAGS: Record<CareKind, string> = {
+  "leave-on": "en:body-lotions",
+  "rinse-off": "en:shower-gels",
+  sunscreen: "en:sunscreens",
+  oral: "en:toothpastes",
+};
 
 type Screen =
   | { kind: "scan" }
@@ -34,6 +42,9 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>({ kind: "scan" });
   const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
   const [manual, setManual] = useState("");
+  const [manualName, setManualName] = useState("");
+  const [manualKind, setManualKind] = useState<CareKind>("leave-on");
+  const [manualIngredients, setManualIngredients] = useState("");
 
   const analyze = useCallback(async (barcode: string) => {
     if (navigator.vibrate) navigator.vibrate(80);
@@ -116,6 +127,33 @@ export default function App() {
     });
   };
 
+  const submitManualCare = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (screen.kind !== "notfound" || !manualIngredients.trim()) return;
+      const product: BeautyProduct = {
+        barcode: screen.barcode,
+        name: manualName.trim() || "Manual entry",
+        categoriesTags: [KIND_TAGS[manualKind]],
+        ingredients: [],
+        ingredientsText: manualIngredients.trim(),
+      };
+      const result = scoreCare(product);
+      setScreen({ kind: "care-result", product, result });
+      setHistory(
+        addToHistory({
+          type: "care",
+          barcode: screen.barcode,
+          name: product.name,
+          score: result.score,
+          band: result.band,
+          scannedAt: Date.now(),
+        })
+      );
+    },
+    [screen, manualName, manualKind, manualIngredients]
+  );
+
   const submitManual = (e: React.FormEvent) => {
     e.preventDefault();
     const code = manual.trim();
@@ -181,15 +219,54 @@ export default function App() {
       )}
 
       {screen.kind === "notfound" && (
-        <div className="status">
-          <h2>Product not found</h2>
-          <p>
-            Barcode <strong>{screen.barcode}</strong> isn't in Open Food Facts or
-            Open Beauty Facts yet. Label-photo analysis is coming in M3.
-          </p>
-          <button className="primary" onClick={() => setScreen({ kind: "scan" })}>
-            Scan again
-          </button>
+        <div className="notfound-screen">
+          <div className="status">
+            <h2>Product not found</h2>
+            <p>
+              Barcode <strong>{screen.barcode}</strong> isn't in Open Food Facts or
+              Open Beauty Facts. US products often have limited coverage — try
+              pasting the ingredients from the label below.
+            </p>
+            <button className="primary" onClick={() => setScreen({ kind: "scan" })}>
+              Scan again
+            </button>
+          </div>
+          <div className="manual-care-card">
+            <p className="manual-care-title">Analyze by ingredients</p>
+            <form className="manual-care-form" onSubmit={submitManualCare}>
+              <input
+                type="text"
+                className="manual-care-input"
+                placeholder="Product name (optional)"
+                value={manualName}
+                onChange={(e) => setManualName(e.target.value)}
+              />
+              <select
+                className="manual-care-input"
+                value={manualKind}
+                onChange={(e) => setManualKind(e.target.value as CareKind)}
+              >
+                <option value="leave-on">Leave-on — lotion, cream, serum</option>
+                <option value="rinse-off">Rinse-off — shampoo, body wash, cleanser</option>
+                <option value="sunscreen">Sunscreen — SPF product</option>
+                <option value="oral">Oral care — toothpaste, mouthwash</option>
+              </select>
+              <textarea
+                className="manual-care-textarea"
+                placeholder="Paste ingredients here, e.g.: Aqua, Glycerin, Cetearyl Alcohol, Dimethicone..."
+                value={manualIngredients}
+                onChange={(e) => setManualIngredients(e.target.value)}
+                rows={5}
+              />
+              <button
+                type="submit"
+                className="primary"
+                disabled={!manualIngredients.trim()}
+              >
+                Analyze ingredients
+              </button>
+            </form>
+          </div>
         </div>
       )}
 
