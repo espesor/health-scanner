@@ -159,6 +159,18 @@ button.primary {
   gap: 16px;
 }
 
+.card-back {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: -4px;
+}
+
 .product-header {
   display: flex;
   gap: 12px;

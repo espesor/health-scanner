@@ -14,6 +14,9 @@ const fmtImpact = (impact: number) =>
 export function ScoreCard({ product, result, onContextChange, onRescan }: Props) {
   return (
     <div className="score-card">
+      <button className="card-back" onClick={onRescan}>
+        ← Back to scanner
+      </button>
       <header className="product-header">
         {product.imageUrl && <img src={product.imageUrl} alt="" />}
         <div>

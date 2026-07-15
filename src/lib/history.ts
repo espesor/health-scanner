@@ -20,7 +20,9 @@ const MAX = 50;
 export function loadHistory(): HistoryEntry[] {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as HistoryEntry[]) : [];
+    const entries = raw ? (JSON.parse(raw) as HistoryEntry[]) : [];
+    // Always present newest first, regardless of stored order.
+    return entries.sort((a, b) => (b.scannedAt ?? 0) - (a.scannedAt ?? 0));
   } catch {
     return [];
   }
@@ -28,7 +30,9 @@ export function loadHistory(): HistoryEntry[] {
 
 export function addToHistory(entry: HistoryEntry): HistoryEntry[] {
   const rest = loadHistory().filter((e) => e.barcode !== entry.barcode);
-  const next = [entry, ...rest].slice(0, MAX);
+  const next = [entry, ...rest]
+    .sort((a, b) => (b.scannedAt ?? 0) - (a.scannedAt ?? 0))
+    .slice(0, MAX);
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
   } catch {
