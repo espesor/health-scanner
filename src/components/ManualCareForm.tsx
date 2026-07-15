@@ -9,6 +9,23 @@ const KIND_TAGS: Record<CareKind, string> = {
   oral: "en:toothpastes",
 };
 
+/** Build a BeautyProduct from manual/OCR inputs — shared by the form and by
+ * re-opening a manual entry from history. */
+export function buildCareProduct(opts: {
+  barcode?: string;
+  name?: string;
+  kind: CareKind;
+  ingredientsText: string;
+}): BeautyProduct {
+  return {
+    barcode: opts.barcode ?? "manual",
+    name: opts.name?.trim() || "Manual entry",
+    categoriesTags: [KIND_TAGS[opts.kind]],
+    ingredients: [],
+    ingredientsText: opts.ingredientsText.trim(),
+  };
+}
+
 interface Props {
   barcode?: string;
   initialName?: string;
@@ -39,13 +56,7 @@ export function ManualCareForm({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ingredients.trim()) return;
-    const product: BeautyProduct = {
-      barcode: barcode ?? "manual",
-      name: name.trim() || "Manual entry",
-      categoriesTags: [KIND_TAGS[kind]],
-      ingredients: [],
-      ingredientsText: ingredients.trim(),
-    };
+    const product = buildCareProduct({ barcode, name, kind, ingredientsText: ingredients });
     onScored(product, scoreCare(product));
   };
 

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { CareScoreCard } from "./components/CareScoreCard";
 import { LabelCapture } from "./components/LabelCapture";
-import { ManualCareForm } from "./components/ManualCareForm";
+import { ManualCareForm, buildCareProduct } from "./components/ManualCareForm";
 import { Scanner } from "./components/Scanner";
 import { ScoreCard } from "./components/ScoreCard";
 import { isValidEan } from "./lib/barcode";
@@ -59,6 +59,7 @@ export default function App() {
         setScreen({ kind: "result", product: food, result });
         setHistory(
           addToHistory({
+            id: food.barcode,
             type: "food",
             barcode: food.barcode,
             name: food.name,
@@ -82,6 +83,7 @@ export default function App() {
         setScreen({ kind: "care-result", product: care, result });
         setHistory(
           addToHistory({
+            id: care.barcode,
             type: "care",
             barcode: care.barcode,
             name: care.name,
@@ -121,21 +123,47 @@ export default function App() {
     });
   };
 
+  // Called only from ManualCareForm (paste + OCR), so these are always local
+  // entries with no database record — store the ingredients so they can be
+  // re-opened by re-scoring locally, under a unique id so they don't collide.
   const onCareScored = useCallback(
     (product: BeautyProduct, result: CareScoreResult) => {
       setScreen({ kind: "care-result", product, result });
+      const scannedAt = Date.now();
       setHistory(
         addToHistory({
+          id: `manual-${scannedAt}`,
           type: "care",
           barcode: product.barcode,
           name: product.name,
           score: result.score,
           band: result.band,
-          scannedAt: Date.now(),
+          careKind: result.kind,
+          ingredientsText: product.ingredientsText,
+          scannedAt,
         })
       );
     },
     []
+  );
+
+  // Re-open a recent scan: manual/OCR care entries are re-scored locally from
+  // their saved ingredients; database entries are re-fetched by barcode.
+  const openHistory = useCallback(
+    (h: HistoryEntry) => {
+      if (h.careKind && h.ingredientsText) {
+        const product = buildCareProduct({
+          barcode: h.barcode,
+          name: h.name,
+          kind: h.careKind,
+          ingredientsText: h.ingredientsText,
+        });
+        setScreen({ kind: "care-result", product, result: scoreCare(product) });
+        return;
+      }
+      analyze(h.barcode);
+    },
+    [analyze]
   );
 
   const submitManual = (e: React.FormEvent) => {
@@ -184,8 +212,8 @@ export default function App() {
               <h3>Recent scans</h3>
               <ul>
                 {history.map((h) => (
-                  <li key={h.barcode}>
-                    <button onClick={() => analyze(h.barcode)}>
+                  <li key={h.id}>
+                    <button onClick={() => openHistory(h)}>
                       {h.imageUrl ? <img src={h.imageUrl} alt="" /> : <span className="thumb-placeholder" />}
                       <span className="history-name">
                         {h.name}
