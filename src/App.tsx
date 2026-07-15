@@ -2,12 +2,19 @@ import { useCallback, useState } from "react";
 import { CareScoreCard } from "./components/CareScoreCard";
 import { LabelCapture } from "./components/LabelCapture";
 import { ManualCareForm, buildCareProduct } from "./components/ManualCareForm";
+import { HistoryList } from "./components/HistoryList";
 import { Scanner } from "./components/Scanner";
 import { ScoreCard } from "./components/ScoreCard";
 import { isValidEan } from "./lib/barcode";
 import { scoreCare } from "./lib/care-score";
 import { scoreFood } from "./lib/food-score";
-import { addToHistory, loadHistory, type HistoryEntry } from "./lib/history";
+import {
+  addToHistory,
+  clearHistory,
+  loadHistory,
+  removeFromHistory,
+  type HistoryEntry,
+} from "./lib/history";
 import { fetchBeautyProduct } from "./lib/openbeautyfacts";
 import { fetchProduct, inferContext } from "./lib/openfoodfacts";
 import { disposeOcr } from "./lib/ocr";
@@ -166,6 +173,14 @@ export default function App() {
     [analyze]
   );
 
+  const deleteHistory = useCallback((id: string) => {
+    setHistory(removeFromHistory(id));
+  }, []);
+
+  const clearAllHistory = useCallback(() => {
+    setHistory(clearHistory());
+  }, []);
+
   const submitManual = (e: React.FormEvent) => {
     e.preventDefault();
     const code = manual.trim();
@@ -208,23 +223,12 @@ export default function App() {
           </button>
 
           {history.length > 0 && (
-            <section className="history">
-              <h3>Recent scans</h3>
-              <ul>
-                {history.map((h) => (
-                  <li key={h.id}>
-                    <button onClick={() => openHistory(h)}>
-                      {h.imageUrl ? <img src={h.imageUrl} alt="" /> : <span className="thumb-placeholder" />}
-                      <span className="history-name">
-                        {h.name}
-                        {h.brand ? <small> · {h.brand}</small> : null}
-                      </span>
-                      <span className={`history-score band-${h.band}`}>{h.score}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <HistoryList
+              entries={history}
+              onOpen={openHistory}
+              onDelete={deleteHistory}
+              onClearAll={clearAllHistory}
+            />
           )}
         </>
       )}

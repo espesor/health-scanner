@@ -50,10 +50,29 @@ export function addToHistory(entry: HistoryEntry): HistoryEntry[] {
   const next = [entry, ...rest]
     .sort((a, b) => (b.scannedAt ?? 0) - (a.scannedAt ?? 0))
     .slice(0, MAX);
+  return persist(next);
+}
+
+/** Remove a single entry by id. */
+export function removeFromHistory(id: string): HistoryEntry[] {
+  return persist(loadHistory().filter((e) => e.id !== id));
+}
+
+/** Remove every entry. */
+export function clearHistory(): HistoryEntry[] {
   try {
-    localStorage.setItem(KEY, JSON.stringify(next));
+    localStorage.removeItem(KEY);
+  } catch {
+    // storage blocked — best-effort
+  }
+  return [];
+}
+
+function persist(entries: HistoryEntry[]): HistoryEntry[] {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(entries));
   } catch {
     // storage full/blocked — history is best-effort
   }
-  return next;
+  return entries;
 }

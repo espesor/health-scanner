@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { addToHistory, loadHistory, type HistoryEntry } from "./history";
+import {
+  addToHistory,
+  clearHistory,
+  loadHistory,
+  removeFromHistory,
+  type HistoryEntry,
+} from "./history";
 
 // Minimal localStorage for the node test environment (no jsdom needed).
 if (typeof globalThis.localStorage === "undefined") {
@@ -67,5 +73,20 @@ describe("history", () => {
       JSON.stringify([{ barcode: "999", name: "Legacy", score: 7, band: "good", scannedAt: 5 }])
     );
     expect(loadHistory()[0].id).toBe("999");
+  });
+
+  it("removes a single entry by id and leaves the rest", () => {
+    addToHistory(entry({ id: "a", scannedAt: 1 }));
+    addToHistory(entry({ id: "b", scannedAt: 2 }));
+    const after = removeFromHistory("a");
+    expect(after.map((e) => e.id)).toEqual(["b"]);
+    expect(loadHistory().map((e) => e.id)).toEqual(["b"]);
+  });
+
+  it("clears all entries", () => {
+    addToHistory(entry({ id: "a", scannedAt: 1 }));
+    addToHistory(entry({ id: "b", scannedAt: 2 }));
+    expect(clearHistory()).toEqual([]);
+    expect(loadHistory()).toEqual([]);
   });
 });

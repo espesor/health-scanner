@@ -561,9 +561,39 @@ button.link-button {
 }
 
 /* ---- History ---- */
-.history h3 {
+.history-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.history-head h3 {
   font-size: 0.95rem;
+}
+
+.history-hint {
+  font-size: 0.72rem;
+  color: var(--text-dim);
   margin-bottom: 8px;
+}
+
+.history-clear-confirm {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.danger-link {
+  border: none;
+  background: transparent;
+  color: var(--band-avoid);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
 }
 
 .history ul {
@@ -574,7 +604,36 @@ button.link-button {
   gap: 6px;
 }
 
-.history li button {
+.history-item {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.history-delete-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--band-avoid);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 16px;
+}
+
+.history-row {
+  position: relative;
+  touch-action: pan-y;
+  will-change: transform;
+}
+
+.history-row.animate {
+  transition: transform 0.18s ease;
+}
+
+.history-row button {
   width: 100%;
   display: flex;
   align-items: center;
