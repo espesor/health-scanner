@@ -4,7 +4,8 @@ Scan a food product's barcode with your phone and get a 1–10 health score with
 an explanation, based on Nutri-Score-style nutrient profiling, NOVA processing
 level, additive flags, and snack-vs-meal context. See [DESIGN.md](DESIGN.md)
 for the full design; this repo currently implements **M1** (barcode → food
-score) and **M2** (personal-care products: sunscreen, toothpaste, lotion…).
+score), **M2** (personal-care products: sunscreen, toothpaste, lotion…), and
+**M3** (on-device label OCR when a barcode isn't in the databases).
 
 **Live app:** https://espesor.github.io/health-scanner/ — open it on your
 phone and point the camera at a barcode. Deployed automatically from `main`
@@ -32,6 +33,10 @@ camera API requires HTTPS. Or type a barcode manually to skip the camera.
 - **Product lookup** queries [Open Food Facts](https://world.openfoodfacts.org)
   and [Open Beauty Facts](https://world.openbeautyfacts.org) (ODbL-licensed
   data) in parallel and routes to the food or personal-care rubric.
+- **Label OCR fallback** — when a barcode isn't in either database (common for
+  US products), photograph the ingredients panel. [Tesseract.js](https://github.com/naptha/tesseract.js)
+  reads it entirely on-device (the image never leaves the phone); the extracted
+  text lands in an editable box for correction, then runs the care rubric.
 - **Scoring** is deterministic — no LLM in the math. Food:
   [src/lib/food-score.ts](src/lib/food-score.ts) (DESIGN.md §5.1). Personal
   care: [src/lib/care-score.ts](src/lib/care-score.ts) against the curated
@@ -42,4 +47,4 @@ camera API requires HTTPS. Or type a barcode manually to skip the camera.
 
 ## Roadmap
 
-M3 label-photo OCR · M4 photo product ID · M5 polish — see DESIGN.md §9.
+M4 photo product ID · M5 polish — see DESIGN.md §9.

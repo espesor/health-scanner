@@ -274,7 +274,7 @@ Notes:
 |---|---|---|
 | M1 | Barcode → food score | Camera + barcode scan, OFF lookup, food rubric, score card. The end-to-end happy path. |
 | M2 | Personal care | Open Beauty Facts lookup, hazard DB v1 (~top 500 flagged ingredients), care rubric |
-| M3 | Label OCR fallback | Claude vision extraction, confirm-and-correct UI |
+| M3 | Label OCR fallback | ✅ Shipped with on-device Tesseract.js (no backend/API key needed for the static Pages deploy; keeps the "image never leaves the device" promise) + confirm-and-correct UI. Claude-vision extraction (per §7.2) remains the accuracy-upgrade path once a backend proxy exists. |
 | M4 | Photo identification | Front-of-pack ID, candidate picker |
 | M5 | Polish | Snack/meal auto-detection tuning, history, PWA install prompt, alternatives ("score 9+ instead") |
 

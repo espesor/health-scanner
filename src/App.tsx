@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 import { CareScoreCard } from "./components/CareScoreCard";
+import { LabelCapture } from "./components/LabelCapture";
+import { ManualCareForm } from "./components/ManualCareForm";
 import { Scanner } from "./components/Scanner";
 import { ScoreCard } from "./components/ScoreCard";
 import { isValidEan } from "./lib/barcode";
@@ -8,21 +10,14 @@ import { scoreFood } from "./lib/food-score";
 import { addToHistory, loadHistory, type HistoryEntry } from "./lib/history";
 import { fetchBeautyProduct } from "./lib/openbeautyfacts";
 import { fetchProduct, inferContext } from "./lib/openfoodfacts";
+import { disposeOcr } from "./lib/ocr";
 import type {
   BeautyProduct,
-  CareKind,
   CareScoreResult,
   MealContext,
   Product,
   ScoreResult,
 } from "./lib/types";
-
-const KIND_TAGS: Record<CareKind, string> = {
-  "leave-on": "en:body-lotions",
-  "rinse-off": "en:shower-gels",
-  sunscreen: "en:sunscreens",
-  oral: "en:toothpastes",
-};
 
 type Screen =
   | { kind: "scan" }
@@ -31,6 +26,8 @@ type Screen =
   | { kind: "care-result"; product: BeautyProduct; result: CareScoreResult }
   | { kind: "nodata"; product: BeautyProduct }
   | { kind: "notfound"; barcode: string }
+  | { kind: "ocr" }
+  | { kind: "care-form"; ingredients: string }
   | { kind: "error"; message: string };
 
 function hasNutrition(p: Product): boolean {
@@ -42,9 +39,6 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>({ kind: "scan" });
   const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
   const [manual, setManual] = useState("");
-  const [manualName, setManualName] = useState("");
-  const [manualKind, setManualKind] = useState<CareKind>("leave-on");
-  const [manualIngredients, setManualIngredients] = useState("");
 
   const analyze = useCallback(async (barcode: string) => {
     if (navigator.vibrate) navigator.vibrate(80);
@@ -127,23 +121,13 @@ export default function App() {
     });
   };
 
-  const submitManualCare = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (screen.kind !== "notfound" || !manualIngredients.trim()) return;
-      const product: BeautyProduct = {
-        barcode: screen.barcode,
-        name: manualName.trim() || "Manual entry",
-        categoriesTags: [KIND_TAGS[manualKind]],
-        ingredients: [],
-        ingredientsText: manualIngredients.trim(),
-      };
-      const result = scoreCare(product);
+  const onCareScored = useCallback(
+    (product: BeautyProduct, result: CareScoreResult) => {
       setScreen({ kind: "care-result", product, result });
       setHistory(
         addToHistory({
           type: "care",
-          barcode: screen.barcode,
+          barcode: product.barcode,
           name: product.name,
           score: result.score,
           band: result.band,
@@ -151,7 +135,7 @@ export default function App() {
         })
       );
     },
-    [screen, manualName, manualKind, manualIngredients]
+    []
   );
 
   const submitManual = (e: React.FormEvent) => {
@@ -188,6 +172,12 @@ export default function App() {
               Analyze
             </button>
           </form>
+          <button
+            className="link-button"
+            onClick={() => setScreen({ kind: "ocr" })}
+          >
+            No barcode? Photograph the ingredients label →
+          </button>
 
           {history.length > 0 && (
             <section className="history">
@@ -224,48 +214,54 @@ export default function App() {
             <h2>Product not found</h2>
             <p>
               Barcode <strong>{screen.barcode}</strong> isn't in Open Food Facts or
-              Open Beauty Facts. US products often have limited coverage — try
-              pasting the ingredients from the label below.
+              Open Beauty Facts. US products often have limited coverage — read the
+              label instead.
             </p>
-            <button className="primary" onClick={() => setScreen({ kind: "scan" })}>
-              Scan again
-            </button>
+            <div className="notfound-actions">
+              <button className="primary" onClick={() => setScreen({ kind: "ocr" })}>
+                Photograph the label
+              </button>
+              <button className="secondary" onClick={() => setScreen({ kind: "scan" })}>
+                Scan again
+              </button>
+            </div>
           </div>
           <div className="manual-care-card">
-            <p className="manual-care-title">Analyze by ingredients</p>
-            <form className="manual-care-form" onSubmit={submitManualCare}>
-              <input
-                type="text"
-                className="manual-care-input"
-                placeholder="Product name (optional)"
-                value={manualName}
-                onChange={(e) => setManualName(e.target.value)}
-              />
-              <select
-                className="manual-care-input"
-                value={manualKind}
-                onChange={(e) => setManualKind(e.target.value as CareKind)}
-              >
-                <option value="leave-on">Leave-on — lotion, cream, serum</option>
-                <option value="rinse-off">Rinse-off — shampoo, body wash, cleanser</option>
-                <option value="sunscreen">Sunscreen — SPF product</option>
-                <option value="oral">Oral care — toothpaste, mouthwash</option>
-              </select>
-              <textarea
-                className="manual-care-textarea"
-                placeholder="Paste ingredients here, e.g.: Aqua, Glycerin, Cetearyl Alcohol, Dimethicone..."
-                value={manualIngredients}
-                onChange={(e) => setManualIngredients(e.target.value)}
-                rows={5}
-              />
-              <button
-                type="submit"
-                className="primary"
-                disabled={!manualIngredients.trim()}
-              >
-                Analyze ingredients
-              </button>
-            </form>
+            <p className="manual-care-title">…or paste the ingredients</p>
+            <ManualCareForm barcode={screen.barcode} onScored={onCareScored} />
+          </div>
+        </div>
+      )}
+
+      {screen.kind === "ocr" && (
+        <LabelCapture
+          onExtracted={(ingredients) => setScreen({ kind: "care-form", ingredients })}
+          onCancel={() => {
+            disposeOcr();
+            setScreen({ kind: "scan" });
+          }}
+        />
+      )}
+
+      {screen.kind === "care-form" && (
+        <div className="notfound-screen">
+          <div className="manual-care-card">
+            <p className="manual-care-title">Check the ingredients, then analyze</p>
+            <ManualCareForm
+              initialIngredients={screen.ingredients}
+              hint={
+                screen.ingredients
+                  ? "Read from your photo — fix any OCR mistakes before scoring."
+                  : "Nothing legible was found. Type or paste the ingredients."
+              }
+              onScored={onCareScored}
+            />
+            <button
+              className="link-button"
+              onClick={() => setScreen({ kind: "ocr" })}
+            >
+              ← Retake photo
+            </button>
           </div>
         </div>
       )}
@@ -275,12 +271,17 @@ export default function App() {
           <h2>No ingredient list available</h2>
           <p>
             <strong>{screen.product.name}</strong> is in Open Beauty Facts, but
-            without an ingredient list there's nothing to evaluate. Label-photo
-            analysis is coming in M3.
+            without an ingredient list there's nothing to evaluate. Photograph
+            the label to score it.
           </p>
-          <button className="primary" onClick={() => setScreen({ kind: "scan" })}>
-            Scan again
-          </button>
+          <div className="notfound-actions">
+            <button className="primary" onClick={() => setScreen({ kind: "ocr" })}>
+              Photograph the label
+            </button>
+            <button className="secondary" onClick={() => setScreen({ kind: "scan" })}>
+              Scan again
+            </button>
+          </div>
         </div>
       )}
 
